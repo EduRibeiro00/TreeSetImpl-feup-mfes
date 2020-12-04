@@ -46,8 +46,8 @@ class {:autocontracts} TreeSet {
 
   // Predicate that indicates if the binary tree is correctly sorted, and is a valid BST.
   predicate isBST(node : BTNode?)
-    reads root
-    decreases elems
+    reads node
+    decreases root, elems
   {
     if node == null
     then true
@@ -65,8 +65,8 @@ class {:autocontracts} TreeSet {
   }
 
   // Receives the hash function to be used and initializes the set as empty.
-  constructor () 
-    ensures elems == {}
+  constructor ()
+    ensures this.elems == {}
   {
     this.root := null;
     this.elems := {};
