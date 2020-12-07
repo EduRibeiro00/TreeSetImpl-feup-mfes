@@ -212,23 +212,22 @@ class {:autocontracts} BSTNode {
   }
 
   // method that returns an ordered sequence of all the elements of the BST
-  // method asSeq() returns (res: seq<T>)
-  //   decreases Repr
-  //   ensures multiset(res) == multiset(elems)
-  //   ensures isSorted(res)
-  // {
-  //   // TODO: preciso de por um lemma/assert para relembrar que a BST é ordenada?
-  //   var left_seq : seq<T> := [];
-  //   var right_seq : seq<T> := [];
-  //   if left != null {
-  //     left_seq := left.asSeq();
-  //   }
-  //   if right != null {
-  //     right_seq := right.asSeq();
-  //   }
+  method asSeq() returns (res: seq<T>)
+    decreases Repr
+    ensures multiset(res) == multiset(elems)
+    ensures isSorted(res)
+  {
+    var left_seq : seq<T> := [];
+    var right_seq : seq<T> := [];
+    if left != null {
+      left_seq := left.asSeq();
+    }
+    if right != null {
+      right_seq := right.asSeq();
+    }
 
-  //   res := left_seq + [value] + right_seq;
-  // }
+    res := left_seq + [value] + right_seq;
+  }
 }
 
 // **********************************************************************
@@ -292,7 +291,6 @@ class {:autocontracts} TreeSet {
     Repr := root.Repr + {this};
   }
 
-  // TODO: ver se preciso dos asserts neste method
   // helper method for inserting a new value in the sorted set 
   static method insertAux(x: T, n: BSTNode?) returns (new_root: BSTNode)
     requires n == null || n.Valid()
@@ -314,7 +312,6 @@ class {:autocontracts} TreeSet {
     else {
       // new value is less than current node's value; should be inserted in the left subtree
       if x < n.value {
-        // assert n.right == null || n.right.Valid();
         // insert in left subtree, get new root of left subtree
         var new_lr := insertAux(x, n.left);
         // update new root and ghost variable
@@ -323,7 +320,6 @@ class {:autocontracts} TreeSet {
       }
       // new value is higher than current node's value; should be inserted in the right subtree
       else {
-        // assert n.left == null || n.left.Valid();
         // insert in right subtree, get new root of right subtree
         var new_rr := insertAux(x, n.right);
         // update new root and ghost variable
@@ -362,17 +358,20 @@ class {:autocontracts} TreeSet {
     }
   }
 
-  // method asSeq() returns (res: seq<T>)
-  //   ensures multiset(res) == multiset(elems)
-  //   ensures isSorted(res)
-  // { 
-  //   if root != null {
-  //     res := root.asSeq();
-  //   }
-  //   else {
-  //     res := [];
-  //   }
-  // }
+  // method that returns an ordered sequence of all the elements in the set
+  method asSeq() returns (res: seq<T>)
+    ensures multiset(res) == multiset(elems)
+    ensures isSorted(res)
+  { 
+    // if the set is not empty, return BST sequence from root
+    if root != null {
+      res := root.asSeq();
+    }
+    // is set is empty, return empty sequence
+    else {
+      res := [];
+    }
+  }
   
   // simple method that checks if the set is empty or not
   predicate method isEmpty()
@@ -437,7 +436,8 @@ method testTreeSetSequence()
   var s := new TreeSet();
   
   // check that the sequence that the asSeq() method returns is empty
-  // assert s.asSeq() == [];
+  var sequence := s.asSeq();
+  assert sequence == [];
 
   // insert a bunch of elements
   s.insert(2);
@@ -449,7 +449,8 @@ method testTreeSetSequence()
   s.insert(8);
 
   // check that the returned sequence has the same elements and is sorted
-  // assert s.asSeq() == [1, 2, 3, 4, 5, 8, 10];
+  // sequence := s.asSeq();
+  // assert sequence == [1, 2, 3, 4, 5, 8, 10];
 
   // delete some of the elements
   s.delete(1);
@@ -458,7 +459,8 @@ method testTreeSetSequence()
   s.delete(5);
 
   // check the sequence of elements
-  // assert s.asSeq() == [2, 4, 8];
+  // sequence := s.asSeq();
+  // assert sequence == [2, 4, 8];
 
   // delete the rest of the elements
   s.delete(2);
@@ -468,12 +470,13 @@ method testTreeSetSequence()
   // check that the set is now completely empty
   assert s.isEmpty();
   // check that the sequence that the asSeq() method returns is now empty
-  // assert s.asSeq() == [];
+  // sequence := s.asSeq();
+  // assert sequence == [];
 }
 
 // A test case, checked statically by Dafny, that should fail
-// because of incorrect calls to TreeSet class methods
-method testTreeSetFail()
+// because of incorrect call to the TreeSet delete() method
+method testTreeSetFailDelete()
 {
   // create new set
   var s := new TreeSet();
@@ -487,6 +490,19 @@ method testTreeSetFail()
   // a precondition for this method is not verified: the number 7 is not
   // on the set, so it cannot be deleted
   s.delete(7);
+}
+
+// A test case, checked statically by Dafny, that should fail
+// because of incorrect call to the TreeSet insert() method
+method testTreeSetFailInsert()
+{
+  // create new set
+  var s := new TreeSet();
+
+  // insert some elements
+  s.insert(2);
+  s.insert(4);
+  s.insert(6);
 
   // this one should also fail the static analysis, once again because it
   // does not satisfy the precondition that an element that is already
