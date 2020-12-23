@@ -1,7 +1,5 @@
 type T = int // for demo purposes, but could be real, etc.
 
-// TODO: ver melhor as clauses/ensures e isso com o Repr
-
 // helper function to check if a value is the smallest element in a set
 predicate isMin(x: T, arr: set<T>)
 {
@@ -11,7 +9,17 @@ predicate isMin(x: T, arr: set<T>)
 // helper function to check if a sequence is in strictly increasing order
 predicate isSorted(arr: seq<T>)
 {
-  forall k1, k2 :: 0 <= k1 < k2 < |arr| ==> arr[k1] < arr[k2]
+  forall k1, k2 :: 0 <= k1 < k2 < |arr| ==> arr[k1] <= arr[k2]
+}
+
+predicate noDuplicates(arr: seq<T>) {
+  forall k1, k2 :: 0 <= k1 < k2 < |arr| ==> arr[k1] != arr[k2]
+}
+
+predicate checkEqual(arr1: seq<T>, arr2: set<T>) {
+  (|arr1| == |arr2|) &&
+  (forall i :: 0 <= i < |arr1| ==> arr1[i] in arr2) &&
+  (forall elem :: elem in arr2 ==> elem in arr1)
 }
 
 // **********************************************************************
@@ -115,6 +123,7 @@ class {:autocontracts} BSTNode {
   // method that deletes a value from the BST
   // returns the new root of the tree (null if the last node of the BST has been deleted)
   method delete(x: T) returns (node: BSTNode?)
+    requires x in elems
     decreases Repr
     ensures fresh(Repr - old(Repr))
     ensures node == null ==> old(elems) <= {x}
@@ -177,7 +186,6 @@ class {:autocontracts} BSTNode {
     }
   }
 
-
   // method that removes and returns the smaller element of a BST
   // used by the delete() method when it needs to find the inorder successor
   // of the root (i.e. the smaller element in the right subtree)
@@ -211,21 +219,31 @@ class {:autocontracts} BSTNode {
     }
   }
 
-  // method that returns an ordered sequence of all the elements of the BST
-  method asSeq() returns (res: seq<T>)
-    decreases Repr
-    ensures multiset(res) == multiset(elems)
+  // method that returns the inorder sequence of all the elements of the BST
+  // inorder sequence of a binary tree:
+  // all elements in the left subtree + root + all elements in the right subtree
+  method inorderSeq() returns (res: seq<T>)
+    decreases Repr      
     ensures isSorted(res)
+    ensures noDuplicates(res)
+    ensures checkEqual(res, elems)
   {
+    // inorder sequence of the BST which root is the left child of the current node
     var left_seq : seq<T> := [];
+
+    // inorder sequence of the BST which root is the right child of the current node
     var right_seq : seq<T> := [];
+
     if left != null {
-      left_seq := left.asSeq();
+      // if left subtree is not null, calculate the left subsequence
+      left_seq := left.inorderSeq();
     }
     if right != null {
-      right_seq := right.asSeq();
+      // if left subtree is not null, calculate the right subsequence
+      right_seq := right.inorderSeq();
     }
 
+    // return the inorder sequence
     res := left_seq + [value] + right_seq;
   }
 }
@@ -236,7 +254,6 @@ class {:autocontracts} TreeSet {
   // ghost variable representing a set of all the elems that are in the set
   ghost var elems: set<T>;
 
-  // TODO: ver melhor o que é que este Repr quer dizer
   // ghost variable representing a set of all the node objects that are in the set
   ghost var Repr: set<object>;
 
@@ -247,8 +264,8 @@ class {:autocontracts} TreeSet {
   predicate Valid()
   {
     this in Repr &&
-    // if the root is null, then the set must be empty
-    (root == null ==> elems == {}) &&
+    // if the root is null, then the set must be empty, and vice-versa
+    (root == null <==> elems == {}) &&
     // if the root exists...
     (root != null ==> 
       root in Repr && root.Repr <= Repr && this !in root.Repr &&
@@ -259,8 +276,8 @@ class {:autocontracts} TreeSet {
 
   // constructor of the class. Creates an empty set
   constructor()
-    ensures fresh(Repr - {this})
     ensures elems == {}
+    ensures Repr == {this}
   {
     root := null;
     Repr := {this};
@@ -358,21 +375,22 @@ class {:autocontracts} TreeSet {
     }
   }
 
-  // method that returns an ordered sequence of all the elements in the set
+  // method that returns an ordered sequence of all elements in the sorted set
   method asSeq() returns (res: seq<T>)
-    ensures multiset(res) == multiset(elems)
-    ensures isSorted(res)
-  { 
-    // if the set is not empty, return BST sequence from root
-    if root != null {
-      res := root.asSeq();
-    }
-    // is set is empty, return empty sequence
-    else {
+      ensures isSorted(res)
+      ensures noDuplicates(res)
+      ensures checkEqual(res, elems)
+  {
+    if root == null {
+      // if root is null then sequence should be empty
       res := [];
     }
+    else {
+      // else, return the inorder sequence of all BST elements from the root
+      res := root.inorderSeq();
+    }
   }
-  
+
   // simple method that checks if the set is empty or not
   predicate method isEmpty()
     ensures isEmpty() <==> (|elems| == 0)
@@ -441,37 +459,30 @@ method testTreeSetSequence()
 
   // insert a bunch of elements
   s.insert(2);
-  s.insert(3);
-  s.insert(5);
-  s.insert(4);
   s.insert(10);
-  s.insert(1);
   s.insert(8);
 
   // check that the returned sequence has the same elements and is sorted
-  // sequence := s.asSeq();
-  // assert sequence == [1, 2, 3, 4, 5, 8, 10];
+  sequence := s.asSeq();
+  assert sequence == [2, 8, 10];
 
   // delete some of the elements
-  s.delete(1);
-  s.delete(10);
-  s.delete(3);
-  s.delete(5);
+  s.delete(8);
 
   // check the sequence of elements
-  // sequence := s.asSeq();
-  // assert sequence == [2, 4, 8];
+  sequence := s.asSeq();
+  assert sequence == [2, 10];
 
   // delete the rest of the elements
   s.delete(2);
-  s.delete(4);
-  s.delete(8);
+  s.delete(10);
 
   // check that the set is now completely empty
   assert s.isEmpty();
+
   // check that the sequence that the asSeq() method returns is now empty
-  // sequence := s.asSeq();
-  // assert sequence == [];
+  sequence := s.asSeq();
+  assert sequence == [];
 }
 
 // A test case, checked statically by Dafny, that should fail
