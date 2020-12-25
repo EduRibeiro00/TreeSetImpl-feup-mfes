@@ -12,13 +12,18 @@ predicate isSorted(arr: seq<T>)
   forall k1, k2 :: 0 <= k1 < k2 < |arr| ==> arr[k1] <= arr[k2]
 }
 
+// helper function that indicates if a sequence has duplicate elements or not
 predicate noDuplicates(arr: seq<T>) {
   forall k1, k2 :: 0 <= k1 < k2 < |arr| ==> arr[k1] != arr[k2]
 }
 
+// helper function that checks if the contents of a given sequence are the same as the elements of a given set
 predicate checkEqual(arr1: seq<T>, arr2: set<T>) {
+  // check if same length
   (|arr1| == |arr2|) &&
+  // every element of the seq appears on the set
   (forall i :: 0 <= i < |arr1| ==> arr1[i] in arr2) &&
+  // every element of the set appears on the seq
   (forall elem :: elem in arr2 ==> elem in arr1)
 }
 
