@@ -45,6 +45,18 @@ class {:autocontracts} BSTNode {
   // right child of the node (? - may be null)
   var right: BSTNode?;
 
+  // constructor of the class. Creates a single node with no children
+  constructor (data: T) 
+    ensures elems == {data}
+    ensures Repr == {this}
+  {
+    value := data;
+    left := null;
+    right := null;
+    elems := {data};
+    Repr := {this};
+  }
+
   // class invariant of the BSTNode class
   predicate Valid()
   {
@@ -96,18 +108,6 @@ class {:autocontracts} BSTNode {
       elems == left.elems + {value} + right.elems)
   }
 
-  // constructor of the class. Creates a single node with no children
-  constructor (data: T) 
-    ensures elems == {data}
-    ensures Repr == {this}
-  {
-    value := data;
-    left := null;
-    right := null;
-    elems := {data};
-    Repr := {this};
-  }
-
   // method that checks if a given value is present in the BST
   function method contains(x: T) : bool
     ensures contains(x) <==> x in elems
@@ -147,7 +147,7 @@ class {:autocontracts} BSTNode {
       if left != null { Repr := Repr + left.Repr; }
     }
 
-    // if the 'x' value is higher tahn the current value, try deleting in right subtree
+    // if the 'x' value is higher than the current value, try deleting in right subtree
     else if right != null && value < x {
       // right.delete() will return the right subtree's new root
       var t := right.delete(x);
@@ -193,7 +193,7 @@ class {:autocontracts} BSTNode {
 
   // method that removes and returns the smaller element of a BST
   // used by the delete() method when it needs to find the inorder successor
-  // of the root (i.e. the smaller element in the right subtree)
+  // of a node (i.e. the smallest element in the right subtree)
   // returns the value of the smallest element, and the new root of the tree
   method deleteMin() returns (min: T, node: BSTNode?)
     decreases Repr
@@ -226,7 +226,7 @@ class {:autocontracts} BSTNode {
 
   // method that returns the inorder sequence of all the elements of the BST
   // inorder sequence of a binary tree:
-  // all elements in the left subtree + root + all elements in the right subtree
+  // inorder sequence of the left subtree + root + inorder sequence of the right subtree
   method inorderSeq() returns (res: seq<T>)
     decreases Repr      
     ensures isSorted(res)
@@ -244,7 +244,7 @@ class {:autocontracts} BSTNode {
       left_seq := left.inorderSeq();
     }
     if right != null {
-      // if left subtree is not null, calculate the right subsequence
+      // if right subtree is not null, calculate the right subsequence
       right_seq := right.inorderSeq();
     }
 
@@ -259,11 +259,21 @@ class {:autocontracts} TreeSet {
   // ghost variable representing a set of all the elems that are in the set
   ghost var elems: set<T>;
 
-  // ghost variable representing a set of all the node objects that are in the set
+  // ghost variable representing a set of all the objects that are in the set (including the set itself)
   ghost var Repr: set<object>;
 
   // variable that represents the root of the BST that implements this sorted set
   var root: BSTNode?
+
+  // constructor of the class. Creates an empty set
+  constructor()
+    ensures elems == {}
+    ensures Repr == {this}
+  {
+    root := null;
+    Repr := {this};
+    elems := {};
+  }
 
   // class invariant of the TreeSet class
   predicate Valid()
@@ -277,16 +287,6 @@ class {:autocontracts} TreeSet {
       // check root's class invariant and connect ghost variable with its intended value
       root.Valid() &&
       elems == root.elems)
-  }
-
-  // constructor of the class. Creates an empty set
-  constructor()
-    ensures elems == {}
-    ensures Repr == {this}
-  {
-    root := null;
-    Repr := {this};
-    elems := {};
   }
 
   // method that checks if a given value is present in the set
@@ -322,9 +322,9 @@ class {:autocontracts} TreeSet {
     ensures n != null ==> n == new_root && fresh(n.Repr - old(n.Repr)) && n.elems == old(n.elems) + {x}
     decreases if n == null then {} else n.Repr
   {
-    // if the old root is empty, i.e. the set is empty
+    // if the current node is null, we can insert the element here
     if n == null {
-      // just need to create a new node, that is the new root
+      // just need to create a new node, that is the root of its BST
       new_root := new BSTNode(x);
     }
     // new value is equal to the current node's value; don't change anything
